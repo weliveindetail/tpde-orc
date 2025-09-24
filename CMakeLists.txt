@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(tpde-orc C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(LLVM_DIR "/usr/lib/llvm-20/lib/cmake/llvm")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(LLVM_DIR "/opt/homebrew/opt/llvm@20/lib/cmake/llvm")
+  set(LLVM_DIR "/usr/lib/llvm-20/lib/cmake/llvm" CACHE STRING "Path to installed LLVM")
 else()
   message(FATAL_ERROR "Unsupported OS")
 endif()
@@ -15,8 +13,11 @@ endif()
 find_package(LLVM REQUIRED CONFIG)
 llvm_map_components_to_libnames(llvm_libs native orcjit)
 
+set(TPDE_INCLUDE_TESTS Off)
+add_subdirectory(deps/tpde)
+
 add_executable(tpde-orc src/main.cpp)
-target_link_libraries(tpde-orc PRIVATE ${llvm_libs})
+target_link_libraries(tpde-orc PRIVATE ${llvm_libs} tpde_llvm)
 target_include_directories(tpde-orc PRIVATE ${LLVM_INCLUDE_DIRS})
 target_compile_options(tpde-orc PRIVATE -Wall -Wextra -Wno-unused-parameter)
 

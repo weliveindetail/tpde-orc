@@ -10,7 +10,10 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "tpde-llvm/LLVMCompiler.hpp"
+
 #include <memory>
+#include <mutex>
 #include <string>
 
 using namespace llvm;
@@ -22,6 +25,40 @@ static cl::opt<std::string>
 static cl::opt<std::string> EntryPoint("entrypoint",
                                        cl::desc("Entry point function name"),
                                        cl::init("main"));
+
+class TPDECompiler : public IRCompileLayer::IRCompiler {
+public:
+  TPDECompiler(JITTargetMachineBuilder JTMB)
+      : IRCompiler(irManglingOptionsFromTargetOptions(JTMB.getOptions())) {
+    assert(Compiler != nullptr && "Unknown architecture");
+  }
+
+  Expected<std::unique_ptr<MemoryBuffer>> operator()(Module &M) override {
+    std::vector<uint8_t> *B;
+    {
+      std::lock_guard<std::mutex> Lock(BuffersAccess);
+      Buffers.push_back(std::make_unique<std::vector<uint8_t>>());
+      B = Buffers.back().get();
+    }
+
+    if (!Compiler->compile_to_elf(M, *B)) {
+      std::string Msg;
+      raw_string_ostream(Msg) << "TPDE failed to compile: " << M.getName();
+      return createStringError(std::move(Msg), inconvertibleErrorCode());
+    }
+
+    StringRef BufferRef{reinterpret_cast<char *>(B->data()), B->size()};
+    return MemoryBuffer::getMemBuffer(BufferRef, "", false);
+  }
+
+private:
+  static thread_local std::unique_ptr<tpde_llvm::LLVMCompiler> Compiler;
+  std::vector<std::unique_ptr<std::vector<uint8_t>>> Buffers;
+  std::mutex BuffersAccess;
+};
+
+thread_local std::unique_ptr<tpde_llvm::LLVMCompiler> TPDECompiler::Compiler =
+    tpde_llvm::LLVMCompiler::create(Triple(LLVM_HOST_TRIPLE));
 
 int main(int argc, char *argv[]) {
   InitLLVM X(argc, argv);
@@ -43,6 +80,10 @@ int main(int argc, char *argv[]) {
 
   ExitOnError ExitOnErr;
   auto Builder = LLJITBuilder();
+  Builder.CreateCompileFunction = [](JITTargetMachineBuilder JTMB)
+      -> Expected<std::unique_ptr<IRCompileLayer::IRCompiler>> {
+    return std::make_unique<TPDECompiler>(JTMB);
+  };
   std::unique_ptr<LLJIT> JIT = ExitOnErr(Builder.create());
 
   ThreadSafeModule TSM(std::move(Mod), std::move(Context));
