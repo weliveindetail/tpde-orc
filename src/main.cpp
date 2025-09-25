@@ -26,10 +26,12 @@ static cl::opt<std::string> EntryPoint("entrypoint",
                                        cl::desc("Entry point function name"),
                                        cl::init("main"));
 
+ExitOnError ExitOnErr;
 class TPDECompiler : public IRCompileLayer::IRCompiler {
 public:
   TPDECompiler(JITTargetMachineBuilder JTMB)
-      : IRCompiler(irManglingOptionsFromTargetOptions(JTMB.getOptions())) {
+      : IRCompiler(irManglingOptionsFromTargetOptions(JTMB.getOptions())),
+        TM(ExitOnErr(JTMB.createTargetMachine())) {
     assert(Compiler != nullptr && "Unknown architecture");
   }
 
@@ -42,9 +44,8 @@ public:
     }
 
     if (!Compiler->compile_to_elf(M, *B)) {
-      std::string Msg;
-      raw_string_ostream(Msg) << "TPDE failed to compile: " << M.getName();
-      return createStringError(std::move(Msg), inconvertibleErrorCode());
+      errs() << "Falling back to LLVM for module: " << M.getName() << "\n";
+      return SimpleCompiler(*TM)(M);
     }
 
     StringRef BufferRef{reinterpret_cast<char *>(B->data()), B->size()};
@@ -55,6 +56,7 @@ private:
   static thread_local std::unique_ptr<tpde_llvm::LLVMCompiler> Compiler;
   std::vector<std::unique_ptr<std::vector<uint8_t>>> Buffers;
   std::mutex BuffersAccess;
+  std::unique_ptr<TargetMachine> TM;
 };
 
 thread_local std::unique_ptr<tpde_llvm::LLVMCompiler> TPDECompiler::Compiler =
@@ -78,7 +80,6 @@ int main(int argc, char *argv[]) {
   InitializeNativeTargetAsmPrinter();
   InitializeNativeTargetAsmParser();
 
-  ExitOnError ExitOnErr;
   auto Builder = LLJITBuilder();
   Builder.CreateCompileFunction = [](JITTargetMachineBuilder JTMB)
       -> Expected<std::unique_ptr<IRCompileLayer::IRCompiler>> {
