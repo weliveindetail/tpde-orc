@@ -11,13 +11,12 @@ else()
 endif()
 
 find_package(LLVM REQUIRED CONFIG)
-llvm_map_components_to_libnames(llvm_libs native orcjit)
 
 set(TPDE_INCLUDE_TESTS Off)
 add_subdirectory(deps/tpde)
 
 add_executable(tpde-orc src/main.cpp)
-target_link_libraries(tpde-orc PRIVATE ${llvm_libs} tpde_llvm)
+target_link_libraries(tpde-orc PRIVATE LLVM tpde_llvm)
 target_include_directories(tpde-orc PRIVATE ${LLVM_INCLUDE_DIRS})
 target_compile_options(tpde-orc PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
