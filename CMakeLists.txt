@@ -13,6 +13,7 @@ endif()
 find_package(LLVM REQUIRED CONFIG)
 
 set(TPDE_INCLUDE_TESTS Off)
+set(TPDE_LOGGING DebugOnly)
 add_subdirectory(deps/tpde)
 
 add_executable(tpde-orc src/main.cpp)
