@@ -147,8 +147,10 @@ int main(int argc, char *argv[]) {
         -> Expected<std::unique_ptr<IRCompileLayer::IRCompiler>> {
       return std::make_unique<TPDECompiler>(JTMB);
     };
-  Builder.SupportConcurrentCompilation = true;
-  Builder.NumCompileThreads = Threads;
+  if (Threads > 1) {
+    Builder.SupportConcurrentCompilation = true;
+    Builder.NumCompileThreads = Threads;
+  }
   std::unique_ptr<LLJIT> JIT = ExitOnErr(Builder.create());
 
   ThreadSafeModule Mod = loadModule(*JIT);

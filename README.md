@@ -29,19 +29,19 @@ Executing main()
 Program returned: 50
 ```
 
-In single-threaded compilation, TPDE is ~4x faster than LLVM for this example:
+In single-threaded compilation, TPDE is ~20x faster than LLVM for this example:
 ```
 $ ./build/tpde-orc --par 1 tpde-orc/03-csmith-tpde.ll
 Load module: tpde-orc/03-csmith-tpde.ll
 Compiling 100 modules on 1 threads in parallel
 ...
-Compile-time was: 2200 ms
+Compile-time was: 329 ms
 
 $ ./build/tpde-orc --par 1 tpde-orc/03-csmith-tpde.ll --llvm
 Load module: tpde-orc/03-csmith-tpde.ll
 Compiling 100 modules on 1 threads in parallel
 ...
-Compile-time was: 8820 ms
+Compile-time was: 6796 ms
 ```
 
 In concurrent compilation, TPDE is only ~3x faster than LLVM in the current setup:
