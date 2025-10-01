@@ -1,6 +1,7 @@
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
 #include <llvm/ExecutionEngine/Orc/ExecutorProcessControl.h>
+#include <llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/IR/LLVMContext.h>
@@ -142,11 +143,16 @@ int main(int argc, char *argv[]) {
   InitializeNativeTargetAsmParser();
 
   auto Builder = LLJITBuilder();
-  if (!UseLLVM)
+  if (UseLLVM) {
+    auto JTMB = ExitOnErr(JITTargetMachineBuilder::detectHost());
+    JTMB.setCodeGenOptLevel(CodeGenOptLevel::None);
+    Builder.setJITTargetMachineBuilder(std::move(JTMB));
+  } else {
     Builder.CreateCompileFunction = [](JITTargetMachineBuilder JTMB)
         -> Expected<std::unique_ptr<IRCompileLayer::IRCompiler>> {
       return std::make_unique<TPDECompiler>(JTMB);
     };
+  }
   if (Threads > 1) {
     Builder.SupportConcurrentCompilation = true;
     Builder.NumCompileThreads = Threads;

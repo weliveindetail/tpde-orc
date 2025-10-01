@@ -29,7 +29,7 @@ Executing main()
 Program returned: 50
 ```
 
-In single-threaded compilation, TPDE is ~20x faster than LLVM for this example:
+In single-threaded compilation, TPDE is 12x faster than LLVM `-O0` for this example:
 ```
 $ ./build/tpde-orc --par 1 tpde-orc/03-csmith-tpde.ll
 Load module: tpde-orc/03-csmith-tpde.ll
@@ -41,10 +41,12 @@ $ ./build/tpde-orc --par 1 tpde-orc/03-csmith-tpde.ll --llvm
 Load module: tpde-orc/03-csmith-tpde.ll
 Compiling 100 modules on 1 threads in parallel
 ...
-Compile-time was: 6796 ms
+Compile-time was: 4060 ms
 ```
 
-In concurrent compilation, TPDE is only ~3x faster than LLVM in the current setup:
+Concurrent compilation comes with a baseline overhead for module cloning and task dispatch.
+It still gives 2.5x speedup when using LLVM.
+TPDE is so fast, however, that the overhead dominates compile-times and even causes a slowdown in total:
 ```
 > ./build/tpde-orc --par 8 tpde-orc/03-csmith-tpde.ll
 Load module: tpde-orc/03-csmith-tpde.ll
@@ -56,10 +58,10 @@ Compile-time was: 737 ms
 Load module: tpde-orc/03-csmith-tpde.ll
 Compiling 100 modules on 8 threads in parallel
 ...
-Compile-time was: 2117 ms
+Compile-time was: 1518 ms
 ```
 
-Overhead of TPDE-to-LLVM fallback is below 5%:
+Overhead of TPDE-to-LLVM fallback is minimal:
 ```
 > ./build/tpde-orc --par 8 tpde-orc/04-csmith-fallback.ll
 Load module: tpde-orc/04-csmith-fallback.ll
@@ -73,7 +75,7 @@ Executing all entrypoints
 Executing 04-csmith-fallback_57() checksum = 5E30C03
 Executing 04-csmith-fallback_15() checksum = 5E30C03
 ..
-Compile-time was: 1512 ms
+Compile-time was: 1199 ms
 
 > ./build/tpde-orc --par 8 tpde-orc/04-csmith-fallback.ll --llvm
 Load module: tpde-orc/04-csmith-fallback.ll
@@ -82,5 +84,5 @@ Executing all entrypoints
 Executing 04-csmith-fallback_45() checksum = 5E30C03
 Executing 04-csmith-fallback_18() checksum = 5E30C03
 ...
-Compile-time was: 1443 ms
+Compile-time was: 1180 ms
 ```
